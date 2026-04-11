@@ -1,8 +1,10 @@
+package githubanalyzer.service;
+
 @Service
 public class FeatureExtractionService {
 
     public FeatureVector extractFeatures(GithubProfile profile,
-                                         List<GithubRepository> repos) {
+            List<GithubRepository> repos) {
 
         FeatureVector fv = new FeatureVector();
 
@@ -12,11 +14,9 @@ public class FeatureExtractionService {
 
         fv.bioLength = profile.getBio() == null ? 0 : profile.getBio().length();
 
-        fv.accountAgeDays =
-                (int) Duration.between(
-                        Instant.parse(profile.getCreated_at()),
-                        Instant.now()
-                ).toDays();
+        fv.accountAgeDays = (int) Duration.between(
+                Instant.parse(profile.getCreated_at()),
+                Instant.now()).toDays();
 
         int totalStars = 0;
         int totalForks = 0;
@@ -36,8 +36,7 @@ public class FeatureExtractionService {
 
         if (repos.size() > 0) {
             fv.avgStars = (double) totalStars / repos.size();
-            fv.repoWithDescriptionPercent =
-                    (double) descriptionCount / repos.size();
+            fv.repoWithDescriptionPercent = (double) descriptionCount / repos.size();
         }
 
         return fv;
