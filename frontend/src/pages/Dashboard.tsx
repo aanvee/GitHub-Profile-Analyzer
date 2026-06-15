@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -9,7 +9,8 @@ import {
   Calendar,
   ExternalLink,
   ChevronRight,
-  Award
+  Award,
+  AlertCircle
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -24,38 +25,74 @@ import {
   Cell
 } from 'recharts';
 import { cn } from '@/src/lib/utils';
-
-const activityData = [
-  { name: 'Mon', score: 720 },
-  { name: 'Tue', score: 735 },
-  { name: 'Wed', score: 742 },
-  { name: 'Thu', score: 768 },
-  { name: 'Fri', score: 785 },
-  { name: 'Sat', score: 792 },
-  { name: 'Sun', score: 812 },
-];
-
-const langData = [
-  { name: 'TypeScript', value: 45, color: '#3178c6' },
-  { name: 'React', value: 30, color: '#61dafb' },
-  { name: 'Node.js', value: 15, color: '#339933' },
-  { name: 'Python', value: 10, color: '#3776ab' },
-];
+import { apiClient } from '../lib/api';
 
 export const Dashboard: React.FC = () => {
+  const [stats, setStats] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [statsData, historyData] = await Promise.all([
+        apiClient.fetchDashboardStats(),
+        apiClient.fetchHistory()
+      ]);
+      setStats(statsData);
+      setHistory(historyData);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400" />
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-8">
+      <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl text-red-400 flex items-center gap-4">
+        <AlertCircle className="w-6 h-6" />
+        <p>{error}</p>
+      </div>
+    </div>
+  );
+
+  const activityData = history.slice(0, 7).reverse().map((item, idx) => ({
+    name: `A-${history.length - idx}`,
+    score: item.gitScore
+  }));
+
   return (
     <div className="p-8 space-y-8">
       {/* Hero Section */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold font-headline tracking-tight">Welcome back, Alex</h2>
-          <p className="text-on-surface-variant mt-1">Your profile intelligence is up 12% this week.</p>
+          <h2 className="text-3xl font-bold font-headline tracking-tight">Intelligence Overview</h2>
+          <p className="text-on-surface-variant mt-1">
+            {stats.totalAnalyses > 0 
+              ? `You have processed ${stats.totalAnalyses} profile evaluations.` 
+              : "Welcome! Run your first analysis to see dashboard insights."}
+          </p>
         </div>
         <div className="flex gap-3">
           <button className="px-4 py-2 bg-surface-container-high border border-white/5 rounded-lg text-xs font-bold tracking-wider uppercase hover:bg-surface-container-highest transition-colors">
             Export Report
           </button>
-          <button className="px-4 py-2 intelligence-gradient text-slate-950 rounded-lg text-xs font-bold tracking-wider uppercase hover:scale-[1.02] transition-transform">
+          <button 
+            onClick={fetchDashboardData}
+            className="px-4 py-2 intelligence-gradient text-slate-950 rounded-lg text-xs font-bold tracking-wider uppercase hover:scale-[1.02] transition-transform"
+          >
             Refresh Data
           </button>
         </div>
@@ -65,33 +102,33 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           icon={Award} 
-          label="GitScore" 
-          value="812" 
-          trend="+42" 
+          label="Current GitScore" 
+          value={stats.currentScore || "---"} 
+          trend={stats.trend >= 0 ? `+${stats.trend}` : stats.trend} 
           color="text-cyan-400" 
           bg="bg-cyan-400/10"
         />
         <StatCard 
           icon={Star} 
-          label="Total Stars" 
-          value="1.2k" 
-          trend="+12" 
+          label="Avg Confidence" 
+          value={`${stats.avgConfidence}%`} 
+          trend="0" 
           color="text-purple-400" 
           bg="bg-purple-400/10"
         />
         <StatCard 
           icon={GitFork} 
-          label="Forks" 
-          value="428" 
-          trend="+5" 
+          label="Target Count" 
+          value={stats.totalAnalyses} 
+          trend="Log" 
           color="text-blue-400" 
           bg="bg-blue-400/10"
         />
         <StatCard 
           icon={Users} 
-          label="Followers" 
-          value="892" 
-          trend="+18" 
+          label="Systems" 
+          value="Online" 
+          trend="LIVE" 
           color="text-emerald-400" 
           bg="bg-emerald-400/10"
         />
@@ -103,123 +140,74 @@ export const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center mb-8">
             <h3 className="font-headline font-bold text-lg">Score Progression</h3>
             <div className="flex gap-2">
-              <button className="px-3 py-1 bg-surface-container-highest rounded-md text-[10px] font-bold uppercase tracking-widest">7D</button>
-              <button className="px-3 py-1 text-slate-500 rounded-md text-[10px] font-bold uppercase tracking-widest">30D</button>
+              <button className="px-3 py-1 bg-surface-container-highest rounded-md text-[10px] font-bold uppercase tracking-widest">REAL-TIME</button>
             </div>
           </div>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={activityData}>
-                <defs>
-                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#00f0ff" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#64748b', fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis 
-                  hide 
-                  domain={['dataMin - 50', 'dataMax + 50']}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1c2026', 
-                    border: '1px solid #ffffff10',
-                    borderRadius: '12px',
-                    fontSize: '12px'
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="#00f0ff" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorScore)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Language Distribution */}
-        <div className="bg-surface-container-low rounded-3xl p-8 border border-white/5 rim-light">
-          <h3 className="font-headline font-bold text-lg mb-8">Language Stack</h3>
-          <div className="h-[200px] w-full mb-8">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={langData} layout="vertical" margin={{ left: -20 }}>
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" hide />
-                <Tooltip cursor={{ fill: 'transparent' }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12}>
-                  {langData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-4">
-            {langData.map((lang) => (
-              <div key={lang.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lang.color }} />
-                  <span className="text-sm font-medium">{lang.name}</span>
+            {activityData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={activityData}>
+                  <defs>
+                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#00f0ff" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    hide 
+                    domain={['dataMin - 10', 'dataMax + 10']}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1c2026', 
+                      border: '1px solid #ffffff10',
+                      borderRadius: '12px',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="score" 
+                    stroke="#00f0ff" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorScore)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+                <div className="h-full flex items-center justify-center text-slate-700 text-sm italic">
+                    Run analyses to see progression data
                 </div>
-                <span className="text-sm text-slate-500">{lang.value}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-surface-container-low rounded-3xl p-8 border border-white/5 rim-light">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-headline font-bold text-lg">Recent Repositories</h3>
-            <button className="text-cyan-400 text-xs font-bold uppercase tracking-widest flex items-center gap-1">
-              View All <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-4">
-            <RepoItem name="ai-orb-assistant" stars={124} forks={32} lang="TypeScript" />
-            <RepoItem name="gitscore-engine" stars={89} forks={12} lang="Rust" />
-            <RepoItem name="premium-ui-kit" stars={256} forks={45} lang="React" />
+            )}
           </div>
         </div>
 
-        <div className="bg-surface-container-low rounded-3xl p-8 border border-white/5 rim-light">
-          <h3 className="font-headline font-bold text-lg mb-6">Intelligence Feed</h3>
+        {/* Intelligence Feed */}
+        <div className="bg-surface-container-low rounded-3xl p-8 border border-white/5 rim-light overflow-y-auto max-h-[420px]">
+          <h3 className="font-headline font-bold text-lg mb-6">Recent Evaluations</h3>
           <div className="space-y-6">
-            <FeedItem 
-              icon={TrendingUp} 
-              title="Score Milestone" 
-              desc="Your GitScore reached 800+ for the first time." 
-              time="2h ago"
-              color="text-emerald-400"
-            />
-            <FeedItem 
-              icon={Code2} 
-              title="New Skill Detected" 
-              desc="Advanced Rust patterns identified in recent commits." 
-              time="5h ago"
-              color="text-cyan-400"
-            />
-            <FeedItem 
-              icon={Calendar} 
-              title="Consistency Streak" 
-              desc="You've committed for 14 consecutive days." 
-              time="1d ago"
-              color="text-purple-400"
-            />
+            {history.slice(0, 5).map((item, idx) => (
+                <FeedItem 
+                    key={idx}
+                    icon={Code2} 
+                    title={`@${item.username}`} 
+                    desc={`Evaluated with a GitScore of ${Math.round(item.gitScore)}.`} 
+                    time={`${idx + 1}m ago`}
+                    color="text-cyan-400"
+                />
+            ))}
+            {history.length === 0 && (
+                <p className="text-slate-600 text-sm italic">No recent activity detected.</p>
+            )}
           </div>
         </div>
       </div>
@@ -246,31 +234,6 @@ const StatCard = ({ icon: Icon, label, value, trend, color, bg }: any) => (
   </motion.div>
 );
 
-const RepoItem = ({ name, stars, forks, lang }: any) => (
-  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
-    <div className="flex items-center gap-4">
-      <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center border border-white/10">
-        <Code2 className="w-5 h-5 text-slate-400" />
-      </div>
-      <div>
-        <h4 className="font-bold text-sm group-hover:text-cyan-400 transition-colors">{name}</h4>
-        <p className="text-xs text-slate-500">{lang}</p>
-      </div>
-    </div>
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-1 text-xs text-slate-400">
-        <Star className="w-3.5 h-3.5" />
-        {stars}
-      </div>
-      <div className="flex items-center gap-1 text-xs text-slate-400">
-        <GitFork className="w-3.5 h-3.5" />
-        {forks}
-      </div>
-      <ExternalLink className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" />
-    </div>
-  </div>
-);
-
 const FeedItem = ({ icon: Icon, title, desc, time, color }: any) => (
   <div className="flex gap-4">
     <div className={cn("mt-1", color)}>
@@ -281,7 +244,7 @@ const FeedItem = ({ icon: Icon, title, desc, time, color }: any) => (
         <h4 className="font-bold text-sm">{title}</h4>
         <span className="text-[10px] text-slate-600 uppercase font-bold">{time}</span>
       </div>
-      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{desc}</p>
+      <p className="text-xs text-slate-500 mt-1">{desc}</p>
     </div>
   </div>
 );

@@ -1,13 +1,34 @@
-import React from 'react';
-import { History as HistoryIcon, Search, Filter, Download } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { History as HistoryIcon, Search, Filter, Download, Terminal, AlertCircle } from 'lucide-react';
+import { apiClient } from '../lib/api';
+
+interface HistoryItem {
+  username: string;
+  gitScore: number;
+  confidence: number;
+  breakdown: any;
+}
 
 export const History: React.FC = () => {
-  const historyItems = [
-    { id: 1, target: 'vercel/next.js', type: 'Repo Analysis', date: '2026-04-09', score: '942' },
-    { id: 2, target: 'gaearon', type: 'Profile Audit', date: '2026-04-08', score: '985' },
-    { id: 3, target: 'microsoft/typescript', type: 'Repo Analysis', date: '2026-04-05', score: '912' },
-    { id: 4, target: 'shadcn', type: 'Profile Audit', date: '2026-04-02', score: '968' },
-  ];
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.fetchHistory();
+      setHistoryItems(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="p-8 space-y-8">
@@ -26,42 +47,59 @@ export const History: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-surface-container-low rounded-3xl border border-white/5 overflow-hidden rim-light">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-white/5 bg-white/5">
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Target</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Type</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Date</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Score</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {historyItems.map((item) => (
-              <tr key={item.id} className="hover:bg-white/5 transition-colors group">
-                <td className="px-6 py-4">
-                  <span className="font-bold text-sm group-hover:text-cyan-400 transition-colors">{item.target}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-xs text-slate-500">{item.type}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-xs text-slate-500">{item.date}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm font-bold text-primary-container">{item.score}</span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button className="text-[10px] uppercase tracking-widest font-bold text-slate-400 hover:text-on-surface transition-colors">
-                    View Report
-                  </button>
-                </td>
+      {loading ? (
+        <div className="h-64 flex flex-col items-center justify-center text-slate-600">
+           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mb-4" />
+           <p className="text-xs font-bold uppercase tracking-widest">Accessing records...</p>
+        </div>
+      ) : error ? (
+        <div className="p-8 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-400 flex items-center gap-4">
+           <AlertCircle className="w-6 h-6" />
+           <p>{error}</p>
+        </div>
+      ) : historyItems.length === 0 ? (
+        <div className="h-64 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-slate-600">
+           <Terminal className="w-10 h-10 mb-4 opacity-20" />
+           <p className="text-xs font-bold uppercase tracking-widest">No intelligence logs found</p>
+        </div>
+      ) : (
+        <div className="bg-surface-container-low rounded-3xl border border-white/5 overflow-hidden rim-light">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-white/5 bg-white/5">
+                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Target</th>
+                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Type</th>
+                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Confidence</th>
+                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">Score</th>
+                <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-500 text-right">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {historyItems.map((item, idx) => (
+                <tr key={idx} className="hover:bg-white/5 transition-colors group">
+                  <td className="px-6 py-4">
+                    <span className="font-bold text-sm group-hover:text-cyan-400 transition-colors">@{item.username}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-slate-500">Profile Audit</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-slate-500">{Math.round(item.confidence * 100)}%</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-bold text-primary-container">{Math.round(item.gitScore)}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button className="text-[10px] uppercase tracking-widest font-bold text-slate-400 hover:text-on-surface transition-colors">
+                      View Report
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

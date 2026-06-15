@@ -44,10 +44,12 @@ export const Login: React.FC = () => {
     }
   }, [email, state]);
 
+  const [role, setRole] = useState<'developer' | 'recruiter'>('developer');
+
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
     setState('typing');
-    setMessage('Connecting to the GitHub matrix...');
+    setMessage(`Connecting ${role} to the GitHub matrix...`);
     
     // Simulate GitHub connection
     setTimeout(() => {
@@ -107,10 +109,28 @@ export const Login: React.FC = () => {
           >
             {/* Role Selector */}
             <div className="flex p-1 bg-surface-container-low rounded-full mb-8 border border-outline-variant/10">
-              <button className="flex-1 py-2 px-4 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all duration-300 bg-surface-container-high text-primary-fixed-dim shadow-sm">
+              <button 
+                type="button"
+                onClick={() => setRole('developer')}
+                className={cn(
+                  "flex-1 py-2 px-4 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all duration-300",
+                  role === 'developer' 
+                    ? "bg-surface-container-high text-primary-fixed-dim shadow-sm" 
+                    : "text-on-surface-variant hover:text-on-surface"
+                )}
+              >
                 Developer
               </button>
-              <button className="flex-1 py-2 px-4 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all duration-300 text-on-surface-variant hover:text-on-surface">
+              <button 
+                type="button"
+                onClick={() => setRole('recruiter')}
+                className={cn(
+                  "flex-1 py-2 px-4 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all duration-300",
+                  role === 'recruiter' 
+                    ? "bg-surface-container-high text-primary-fixed-dim shadow-sm" 
+                    : "text-on-surface-variant hover:text-on-surface"
+                )}
+              >
                 Recruiter
               </button>
             </div>
